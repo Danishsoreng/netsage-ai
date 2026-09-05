@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Dashboard &middot; NetSage AI{% endblock %}
+{% block n2 %}on{% endblock %}
+{% block body %}
+
+<h1>Dashboard</h1>
+<p class="sub">Running on {{ db_url }}. AI engine:
+  {{ 'Claude API' if ai_enabled else 'local heuristic (no API key set)' }}.</p>
+
+<div class="tally">
+  <div><b>{{ m.total_cases }}</b><small>Cases</small></div>
+  <div><b>{{ m.total_diagnoses }}</b><small>Proposals</small></div>
+  <div><b>{{ m.reviewed }}</b><small>Reviewed</small></div>
+  <div><b>{{ m.pending_review }}</b><small>Pending</small></div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>Faults by type</h2>
+    <div class="bars">
+    {% set maxf = m.by_fault_type.values() | max if m.by_fault_type else 1 %}
+    {% for k, v in m.by_fault_type.items() %}
+      <div class="bar">
+        <span class="lbl">{{ k }}</span>
+        <span class="t"><span class="f" style="width: {{ (v / maxf * 100) | round(0, 'floor') }}%"></span></span>
+        <span class="n">{{ v }}</span>
+      </div>
+    {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Faults by severity</h2>
+    <div class="bars">
+    {% set maxs = m.by_severity.values() | max if m.by_severity else 1 %}
+    {% for k, v in m.by_severity.items() %}
+      <div class="bar">
+        <span class="lbl">{{ k }}</span>
+        <span class="t"><span class="f" style="width: {{ (v / maxs * 100) | round(0, 'floor') }}%"></span></span>
+        <span class="n">{{ v }}</span>
+      </div>
+    {% endfor %}
+    </div>
+
+    <h2 style="margin-top:22px">Human decisions</h2>
+    <div class="bars">
+    {% set maxd = m.by_decision.values() | max if m.reviewed else 1 %}
+    {% for k, v in m.by_decision.items() %}
+      <div class="bar">
+        <span class="lbl">{{ k }}</span>
+        <span class="t"><span class="f" style="width: {{ (v / (maxd or 1) * 100) | round(0, 'floor') }}%"></span></span>
+        <span class="n">{{ v }}</span>
+      </div>
+    {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>How often the AI agreed with the human</h2>
+  {% if m.reviewed %}
+    <p>Of {{ m.reviewed }} reviewed proposals, {{ m.by_decision.accepted }} were
+    accepted without change — an agreement rate of
+    <strong>{{ (m.agreement_rate * 100) | round(1) }}%</strong>.
+    {{ m.pending_review }} proposals are still unreviewed and are not counted here.</p>
+  {% else %}
+    <p class="empty">No proposals have been reviewed yet, so there is no agreement
+    rate to report. Review some cases in the queue first.</p>
+  {% endif %}
+
+  <p style="font-size:13px;color:var(--ink-soft);margin-top:14px">
+    Separately, the AI picked the same fault category as the recorded label on
+    {{ m.fault_type_matched }} of {{ m.fault_type_compared }} cases. Read that
+    number carefully: it compares against labels in the seed dataset, not
+    against fresh unseen faults, so it measures consistency on known cases
+    rather than real-world accuracy.
+  </p>
+</div>
+
+<div class="panel">
+  <h2>Responsible AI log — proposals a human had to correct</h2>
+  {% if corrections %}
+  <table class="log">
+    <thead><tr><th>Case</th><th>Decision</th><th>AI said</th><th>Human said</th><th>Notes</th></tr></thead>
+    <tbody>
+    {% for c in corrections %}
+      <tr>
+        <td><a href="{{ url_for('case_detail', case_ref=c.case.case_ref) }}">{{ c.case.case_ref }}</a></td>
+        <td><span class="state {{ c.review.decision }}">{{ c.review.decision }}</span></td>
+        <td>{{ c.diagnosis.root_cause }}</td>
+        <td>{{ c.review.corrected_root_cause or '—' }}</td>
+        <td>{{ c.review.reviewer_notes or '—' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="empty">Nothing logged yet. Every edited or rejected proposal appears
+    here automatically, which is what makes the AI's mistakes reviewable rather
+    than invisible.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

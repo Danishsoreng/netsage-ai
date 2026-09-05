@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>No case {{ case_ref }}</h1>
+<p class="sub">That reference is not in the database. Run the pipeline to ingest cases, or pick one from the queue.</p>
+<p><a href="{{ url_for('index') }}">Back to the queue</a></p>
+{% endblock %}

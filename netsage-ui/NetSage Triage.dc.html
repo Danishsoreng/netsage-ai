@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  html, body { margin:0; padding:0; background:#07090f; }
+  * { box-sizing:border-box; }
+  a { color: oklch(0.78 0.13 200); text-decoration:none; }
+  a:hover { color: oklch(0.88 0.13 200); }
+  textarea, input, button { font-family:inherit; }
+  textarea:focus, input:focus { outline:none; border-color: oklch(0.72 0.15 200 / .8) !important; }
+  textarea::placeholder, input::placeholder { color: oklch(0.45 0.015 265); }
+  @keyframes ns-pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+  @keyframes ns-rise { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+  @keyframes ns-spin { to { transform: rotate(360deg); } }
+  ::selection { background: oklch(0.72 0.15 200 / .3); }
+</style>
+</helmet>
+<div style="position:relative; min-height:100vh; background:radial-gradient(1100px 620px at 78% -12%, oklch(0.26 0.07 265 / .5), transparent 60%), #07090f; color:oklch(0.95 0.01 265); font-family:'Space Grotesk', Helvetica, sans-serif;">
+
+  <canvas id="ns-field2" style="position:fixed; inset:0; width:100%; height:100%; display:block; pointer-events:none; z-index:0;"></canvas>
+
+  <div style="position:relative; z-index:1; max-width:1420px; margin:0 auto; padding:0 36px 90px;">
+
+    <header style="display:flex; align-items:center; justify-content:space-between; padding:24px 0 22px; position:sticky; top:0; z-index:6; backdrop-filter:blur(14px); background:linear-gradient(#07090fdd, #07090f55);">
+      <div style="display:flex; align-items:center; gap:13px;">
+        <div style="width:24px; height:24px; border:1.5px solid oklch(0.72 0.15 200); transform:rotate(45deg); position:relative;">
+          <div style="position:absolute; inset:5px; background:oklch(0.72 0.15 300); opacity:.85;"></div>
+        </div>
+        <div style="font-size:16px; font-weight:600; letter-spacing:-0.01em;">NetSage<span style="opacity:.5; font-weight:400;"> · triage console</span></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:22px; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:oklch(0.62 0.015 265);">
+        <span>reviewer: <span style="color:oklch(0.86 0.02 265);">{{ reviewer }}</span></span>
+        <span style="color:{{ caseColor }};">{{ caseLabel }}</span>
+        <span style="display:flex; align-items:center; gap:8px;"><span style="width:7px; height:7px; border-radius:50%; background:oklch(0.78 0.16 155); animation:ns-pulse 2.4s infinite;"></span>engine: {{ engineLabel }}</span>
+      </div>
+    </header>
+
+    <div style="display:flex; align-items:center; gap:12px; padding:10px 0 26px; font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:oklch(0.5 0.015 265); flex-wrap:wrap;">
+      <span style="color:{{ step1Color }};">01 describe</span>
+      <span style="opacity:.4;">→</span>
+      <span style="color:{{ step2Color }};">02 rule check</span>
+      <span style="opacity:.4;">→</span>
+      <span style="color:{{ step3Color }};">03 ai proposal</span>
+      <span style="opacity:.4;">→</span>
+      <span style="color:{{ step4Color }};">04 you decide</span>
+    </div>
+
+    <div style="display:grid; grid-template-columns:0.92fr 1.08fr; gap:22px; align-items:start;">
+
+      <!-- LEFT: intake + rule findings -->
+      <div style="display:flex; flex-direction:column; gap:22px;">
+
+        <section data-tilt="1" style="--rx:0deg; --ry:0deg; transform:perspective(1400px) rotateX(var(--rx)) rotateY(var(--ry)); border:1px solid oklch(0.28 0.02 265); background:oklch(0.165 0.02 265 / .62); backdrop-filter:blur(10px); padding:24px 26px 26px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:20px;">
+            <h2 style="font-size:18px; font-weight:600; letter-spacing:-0.015em; margin:0;">What is broken?</h2>
+            <div onClick="{{ loadExample }}" style="font-family:'JetBrains Mono', monospace; font-size:11px; color:oklch(0.72 0.13 200); cursor:pointer; border-bottom:1px dashed oklch(0.72 0.13 200 / .5);">load example case</div>
+          </div>
+
+          <label style="display:block; font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.55 0.015 265); margin-bottom:8px;">Symptom · in plain words</label>
+          <textarea value="{{ symptom }}" onChange="{{ setSymptom }}" rows="2" placeholder="PC in room 204 gets an IP but cannot reach the file server" style="width:100%; resize:vertical; background:oklch(0.12 0.02 265); border:1px solid oklch(0.3 0.02 265); color:oklch(0.93 0.01 265); font-size:14.5px; line-height:1.5; padding:12px 13px; margin-bottom:18px;"></textarea>
+
+          <label style="display:block; font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.55 0.015 265); margin-bottom:8px;">Topology notes · optional</label>
+          <textarea value="{{ topology }}" onChange="{{ setTopology }}" rows="2" placeholder="Access switch SW-204 → uplink Gi0/1 → core SW-CORE, VLAN 30" style="width:100%; resize:vertical; background:oklch(0.12 0.02 265); border:1px solid oklch(0.3 0.02 265); color:oklch(0.93 0.01 265); font-size:14px; line-height:1.5; padding:12px 13px; margin-bottom:18px;"></textarea>
+
+          <label style="display:flex; justify-content:space-between; font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.55 0.015 265); margin-bottom:8px;"><span>Paste show output</span><span style="letter-spacing:0; text-transform:none; color:oklch(0.45 0.015 265);">{{ outputLines }} lines</span></label>
+          <textarea value="{{ showOutput }}" onChange="{{ setOutput }}" rows="9" placeholder="show interfaces Gi0/1&#10;show ip interface brief&#10;show interfaces trunk" style="width:100%; resize:vertical; background:oklch(0.11 0.02 265); border:1px solid oklch(0.3 0.02 265); color:oklch(0.86 0.02 265); font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:1.65; padding:12px 13px; margin-bottom:20px;"></textarea>
+
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div onClick="{{ runDiagnosis }}" style="flex:1; text-align:center; padding:14px; border:1px solid oklch(0.72 0.15 200 / .6); background:oklch(0.72 0.15 200 / .14); font-size:14.5px; font-weight:500; cursor:pointer; transition:background .25s, box-shadow .3s;" style-hover="background:oklch(0.72 0.15 200 / .26); box-shadow:0 0 34px oklch(0.72 0.15 200 / .22)">{{ runLabel }}</div>
+            <div onClick="{{ resetCase }}" style="padding:14px 18px; border:1px solid oklch(0.32 0.02 265); font-size:14px; color:oklch(0.72 0.015 265); cursor:pointer; transition:border-color .25s;" style-hover="border-color:oklch(0.58 0.02 265)">Clear</div>
+          </div>
+        </section>
+
+        <section style="border:1px solid oklch(0.28 0.02 265); background:oklch(0.165 0.02 265 / .62); backdrop-filter:blur(10px); padding:24px 26px 26px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:6px;">
+            <h2 style="font-size:18px; font-weight:600; letter-spacing:-0.015em; margin:0;">Rule checker</h2>
+            <div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:oklch(0.6 0.015 265);">{{ findingCount }} of 8 checks fired</div>
+          </div>
+          <p style="font-size:13px; line-height:1.55; color:oklch(0.6 0.015 265); margin:0 0 18px;">Deterministic, no model. Runs first, and its findings are handed to the AI as established facts.</p>
+
+          <sc-if value="{{ hasFindings }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ findings }}" as="f" hint-placeholder-count="3">
+              <div data-row="1" style="display:flex; gap:14px; padding:14px 0; border-top:1px solid oklch(0.23 0.02 265); transition:padding-left .25s;" style-hover="padding-left:6px">
+                <div style="width:5px; flex:none; margin-top:3px; height:34px; background:{{ f.color }};"></div>
+                <div style="min-width:0;">
+                  <div style="display:flex; gap:10px; align-items:baseline; margin-bottom:5px; flex-wrap:wrap;">
+                    <span style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:oklch(0.82 0.02 265);">{{ f.code }}</span>
+                    <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:{{ f.color }};">{{ f.severity }}</span>
+                  </div>
+                  <div style="font-size:14px; line-height:1.5; margin-bottom:5px;">{{ f.message }}</div>
+                  <div style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:oklch(0.58 0.015 265); white-space:pre-wrap; word-break:break-word;">{{ f.evidence }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{ noFindings }}" hint-placeholder-val="{{ false }}">
+            <div style="font-family:'JetBrains Mono', monospace; font-size:12.5px; color:oklch(0.5 0.015 265); border-top:1px solid oklch(0.23 0.02 265); padding-top:16px;">{{ emptyFindingsNote }}</div>
+          </sc-if>
+        </section>
+      </div>
+
+      <!-- RIGHT: proposal, decision, chat -->
+      <div style="display:flex; flex-direction:column; gap:22px;">
+
+        <section data-tilt="1" style="--rx:0deg; --ry:0deg; transform:perspective(1400px) rotateX(var(--rx)) rotateY(var(--ry)); border:1px solid oklch(0.3 0.03 300 / .55); background:linear-gradient(160deg, oklch(0.2 0.035 290 / .6), oklch(0.155 0.02 265 / .62)); backdrop-filter:blur(10px); padding:26px 28px 28px; min-height:280px;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:20px;">
+            <h2 style="font-size:18px; font-weight:600; letter-spacing:-0.015em; margin:0;">AI proposal</h2>
+            <div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:oklch(0.62 0.015 265);">{{ proposalMeta }}</div>
+          </div>
+
+          <sc-if value="{{ isIdle }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:14.5px; line-height:1.65; color:oklch(0.62 0.015 265); padding:22px 0 8px; text-wrap:pretty;">
+              Describe the fault on the left and paste whatever <span style="font-family:'JetBrains Mono', monospace; font-size:13px; color:oklch(0.8 0.06 200);">show</span> output you already have. You will get one ranked root cause with the evidence it rests on, a command to confirm it, and the fix — then you decide.
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isBusy }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:14px; padding:26px 0;">
+              <div style="width:18px; height:18px; border:2px solid oklch(0.72 0.15 200 / .25); border-top-color:oklch(0.72 0.15 200); border-radius:50%; animation:ns-spin .8s linear infinite;"></div>
+              <div style="font-family:'JetBrains Mono', monospace; font-size:13px; color:oklch(0.74 0.02 265);">{{ busyLabel }}</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ hasDiagnosis }}" hint-placeholder-val="{{ false }}">
+            <div style="animation:ns-rise .5s ease both;">
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
+                <span style="font-family:'JetBrains Mono', monospace; font-size:11px; padding:5px 10px; border:1px solid oklch(0.4 0.03 300); color:oklch(0.85 0.08 300);">{{ dxFaultType }}</span>
+                <span style="font-family:'JetBrains Mono', monospace; font-size:11px; padding:5px 10px; border:1px solid oklch(0.4 0.03 200); color:oklch(0.85 0.08 200);">{{ dxLayer }}</span>
+                <span style="font-family:'JetBrains Mono', monospace; font-size:11px; padding:5px 10px; border:1px solid oklch(0.38 0.02 265); color:oklch(0.8 0.02 265);">confidence {{ dxConfidence }}</span>
+              </div>
+
+              <div style="font-size:22px; font-weight:600; line-height:1.32; letter-spacing:-0.015em; margin-bottom:8px; text-wrap:pretty;">{{ dxRootCause }}</div>
+              <div style="height:4px; background:oklch(0.24 0.02 265); margin:16px 0 22px; position:relative; overflow:hidden;">
+                <div style="position:absolute; inset:0 auto 0 0; width:{{ dxConfWidth }}; background:linear-gradient(90deg, oklch(0.72 0.15 200), oklch(0.75 0.14 300)); transition:width .8s ease;"></div>
+              </div>
+
+              <div style="font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.55 0.015 265); margin-bottom:9px;">Evidence</div>
+              <div style="font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:1.65; color:oklch(0.83 0.015 265); background:oklch(0.115 0.02 265); border-left:2px solid oklch(0.75 0.14 300); padding:13px 15px; margin-bottom:20px; white-space:pre-wrap;">{{ dxEvidence }}</div>
+
+              <div style="font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.55 0.015 265); margin-bottom:9px;">Run this to confirm</div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; font-family:'JetBrains Mono', monospace; font-size:13px; color:oklch(0.87 0.06 200); background:oklch(0.115 0.02 265); padding:13px 15px; margin-bottom:20px;">
+                <span style="word-break:break-all;">{{ dxCommand }}</span>
+                <span onClick="{{ copyCommand }}" style="flex:none; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:oklch(0.6 0.015 265); cursor:pointer;" style-hover="color:oklch(0.85 0.02 265)">{{ copyLabel }}</span>
+              </div>
+
+              <div style="font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.55 0.015 265); margin-bottom:9px;">Then fix it</div>
+              <sc-for list="{{ dxFixSteps }}" as="s" hint-placeholder-count="3">
+                <div style="display:flex; gap:12px; padding:9px 0; border-bottom:1px solid oklch(0.22 0.02 265);">
+                  <span style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:oklch(0.65 0.12 155); flex:none; padding-top:2px;">{{ s.n }}</span>
+                  <span style="font-size:14px; line-height:1.55;">{{ s.text }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </section>
+
+        <sc-if value="{{ hasDiagnosis }}" hint-placeholder-val="{{ false }}">
+          <section style="border:1px solid oklch(0.28 0.02 265); background:oklch(0.165 0.02 265 / .62); backdrop-filter:blur(10px); padding:24px 26px 26px;">
+            <h2 style="font-size:18px; font-weight:600; letter-spacing:-0.015em; margin:0 0 6px;">Your decision</h2>
+            <p style="font-size:13px; line-height:1.55; color:oklch(0.6 0.015 265); margin:0 0 18px;">Nothing is recorded until you choose. Editing keeps the AI's version alongside yours in the log.</p>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-bottom:18px;">
+              <div onClick="{{ accept }}" style="text-align:center; padding:13px 8px; border:1px solid {{ acceptBorder }}; background:{{ acceptBg }}; font-size:14px; font-weight:500; cursor:pointer; transition:background .25s;" style-hover="background:oklch(0.78 0.16 155 / .24)">Accept</div>
+              <div onClick="{{ toggleEdit }}" style="text-align:center; padding:13px 8px; border:1px solid {{ editBorder }}; background:{{ editBg }}; font-size:14px; font-weight:500; cursor:pointer; transition:background .25s;" style-hover="background:oklch(0.82 0.14 85 / .22)">Edit</div>
+              <div onClick="{{ reject }}" style="text-align:center; padding:13px 8px; border:1px solid {{ rejectBorder }}; background:{{ rejectBg }}; font-size:14px; font-weight:500; cursor:pointer; transition:background .25s;" style-hover="background:oklch(0.7 0.16 25 / .22)">Reject</div>
+            </div>
+
+            <sc-if value="{{ isEditing }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-bottom:18px;">
+                <label style="display:block; font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.55 0.015 265); margin-bottom:8px;">Corrected root cause</label>
+                <textarea value="{{ corrected }}" onChange="{{ setCorrected }}" rows="2" style="width:100%; resize:vertical; background:oklch(0.12 0.02 265); border:1px solid oklch(0.82 0.14 85 / .5); color:oklch(0.93 0.01 265); font-size:14px; line-height:1.5; padding:12px 13px; margin-bottom:12px;"></textarea>
+                <div onClick="{{ saveEdit }}" style="display:inline-block; padding:11px 20px; border:1px solid oklch(0.82 0.14 85 / .6); background:oklch(0.82 0.14 85 / .12); font-size:13.5px; cursor:pointer;" style-hover="background:oklch(0.82 0.14 85 / .24)">Save correction</div>
+              </div>
+            </sc-if>
+
+            <label style="display:block; font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.55 0.015 265); margin-bottom:8px;">Reviewer notes</label>
+            <textarea value="{{ notes }}" onChange="{{ setNotes }}" rows="2" placeholder="What you actually found on the device" style="width:100%; resize:vertical; background:oklch(0.12 0.02 265); border:1px solid oklch(0.3 0.02 265); color:oklch(0.93 0.01 265); font-size:14px; line-height:1.5; padding:12px 13px;"></textarea>
+          </section>
+        </sc-if>
+
+        <section style="border:1px solid oklch(0.28 0.02 265); background:oklch(0.165 0.02 265 / .62); backdrop-filter:blur(10px); padding:24px 26px 22px; display:flex; flex-direction:column;">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px;">
+            <h2 style="font-size:18px; font-weight:600; letter-spacing:-0.015em; margin:0;">Ask about this case</h2>
+            <div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:oklch(0.6 0.015 265);">{{ chatMeta }}</div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:14px; max-height:420px; overflow-y:auto; margin-bottom:16px;">
+            <sc-for list="{{ messages }}" as="m" hint-placeholder-count="2">
+              <div style="display:flex; flex-direction:column; align-items:{{ m.align }};">
+                <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.5 0.015 265); margin-bottom:6px;">{{ m.who }}</div>
+                <div style="max-width:86%; font-size:14px; line-height:1.6; padding:12px 15px; border:1px solid {{ m.border }}; background:{{ m.bg }}; white-space:pre-wrap; text-wrap:pretty;">{{ m.text }}</div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ chatEmpty }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:13.5px; line-height:1.6; color:oklch(0.55 0.015 265);">Try: “why not a spanning-tree loop?” · “what if the confirming command shows nothing?” · “explain MTU mismatch to me like I am new”</div>
+            </sc-if>
+          </div>
+
+          <div style="display:flex; gap:10px; align-items:stretch; border-top:1px solid oklch(0.24 0.02 265); padding-top:16px;">
+            <input value="{{ draft }}" onChange="{{ setDraft }}" onKeyDown="{{ onChatKey }}" placeholder="Ask a follow-up question" style="flex:1; background:oklch(0.12 0.02 265); border:1px solid oklch(0.3 0.02 265); color:oklch(0.93 0.01 265); font-size:14px; padding:12px 13px;">
+            <div onClick="{{ sendChat }}" style="padding:12px 20px; border:1px solid oklch(0.72 0.15 200 / .55); background:oklch(0.72 0.15 200 / .12); font-size:14px; cursor:pointer; display:flex; align-items:center; transition:background .25s;" style-hover="background:oklch(0.72 0.15 200 / .24)">Send</div>
+          </div>
+        </section>
+
+        <sc-if value="{{ hasLog }}" hint-placeholder-val="{{ false }}">
+          <section style="border:1px solid oklch(0.28 0.02 265); background:oklch(0.165 0.02 265 / .62); backdrop-filter:blur(10px); padding:24px 26px 22px;">
+            <h2 style="font-size:18px; font-weight:600; letter-spacing:-0.015em; margin:0 0 16px;">Review log</h2>
+            <sc-for list="{{ log }}" as="l" hint-placeholder-count="2">
+              <div style="display:flex; gap:14px; padding:12px 0; border-top:1px solid oklch(0.23 0.02 265);">
+                <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:oklch(0.55 0.015 265); flex:none; width:62px;">{{ l.time }}</span>
+                <span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.1em; color:{{ l.color }}; flex:none; width:78px;">{{ l.decision }}</span>
+                <span style="font-size:13.5px; line-height:1.5; color:oklch(0.8 0.015 265);">{{ l.text }}</span>
+              </div>
+            </sc-for>
+          </section>
+        </sc-if>
+      </div>
+    </div>
+
+    <footer style="margin-top:44px; padding-top:22px; border-top:1px solid oklch(0.24 0.02 265); display:flex; justify-content:space-between; gap:20px; font-family:'JetBrains Mono', monospace; font-size:11px; color:oklch(0.48 0.015 265); flex-wrap:wrap;">
+      <span>reads pasted output, not live devices · proposes fixes, does not apply them</span>
+      <span>cases · rule_findings · diagnoses · reviews</span>
+    </footer>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accentHue&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:200,&quot;min&quot;:0,&quot;max&quot;:360,&quot;step&quot;:5,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Particle field&quot;},&quot;particleCount&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1500,&quot;min&quot;:300,&quot;max&quot;:5000,&quot;step&quot;:100,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Particle field&quot;},&quot;motionIntensity&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0,&quot;max&quot;:2,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Particle field&quot;},&quot;tiltStrength&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0,&quot;max&quot;:2.5,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Interaction&quot;}}">
+const SEV = { high: 'oklch(0.7 0.16 25)', medium: 'oklch(0.82 0.14 85)', low: 'oklch(0.72 0.13 200)' };
+
+// --- helpers, mirroring app/rule_checker.py --------------------------------
+
+// Pulls host records out of lines like:
+//   PC1  192.168.10.25  255.255.255.0  192.168.10.1  vlan10
+function parseHosts(text) {
+  const out = [];
+  (text || '').split('\n').forEach((line) => {
+    if (!line.trim() || line.trim().startsWith('#')) return;
+    const m = line.match(/^\s*([\w\-.]+)\s+(\d{1,3}(?:\.\d{1,3}){3})\s+(\d{1,3}(?:\.\d{1,3}){3})(?:\s+(\d{1,3}(?:\.\d{1,3}){3}))?(?:\s+(vlan\s?\d+))?\s*$/i);
+    if (m) out.push({ name: m[1], ip: m[2], mask: m[3], gw: m[4] || null, vlan: m[5] || null });
+  });
+  return out;
+}
+
+// "192.168.10.25" masked by "255.255.255.0" -> "192.168.10.0"
+function networkOf(ip, mask) {
+  const a = ip.split('.').map(Number), m = mask.split('.').map(Number);
+  return a.map((o, i) => o & m[i]).join('.');
+}
+
+function maskBits(mask) {
+  return mask.split('.').map((o) => Number(o).toString(2).padStart(8, '0')).join('');
+}
+
+// A legal mask is an unbroken run of 1s, so a 0 followed by a 1 is invalid.
+function isValidMask(mask) { return maskBits(mask).indexOf('01') === -1; }
+
+// "192.168.10.25" + "255.255.255.0" -> "192.168.10.0/24"
+function networkLabel(ip, mask) {
+  return networkOf(ip, mask) + '/' + (maskBits(mask).match(/1/g) || []).length;
+}
+
+// --- the eight checks ------------------------------------------------------
+// Same eight, same codes, same severities as app/rule_checker.py. This copy
+// only runs when the server cannot be reached; the server's is authoritative.
+
+const RULES = [
+  { code: 'DUPLICATE_IP', sev: 'high',
+    detect: (text, hosts) => {
+      const seen = {};
+      hosts.forEach((h) => { (seen[h.ip] = seen[h.ip] || []).push(h.name); });
+      return Object.keys(seen).filter((ip) => seen[ip].length > 1).map((ip) => ({
+        message: 'IP address ' + ip + ' is assigned to more than one device.',
+        evidence: 'Devices sharing ' + ip + ': ' + seen[ip].sort().join(', ')
+      }));
+    } },
+
+  { code: 'INVALID_SUBNET_MASK', sev: 'high',
+    detect: (text, hosts) => hosts.filter((h) => maskBits(h.mask).indexOf('01') !== -1).map((h) => ({
+      message: h.name + ' has an invalid subnet mask ' + h.mask + '.',
+      evidence: 'Mask bit pattern ' + maskBits(h.mask) + ' is not contiguous.'
+    })) },
+
+  { code: 'GATEWAY_OFF_SUBNET', sev: 'high',
+    detect: (text, hosts) => hosts.filter((h) => h.gw && isValidMask(h.mask)
+        && networkOf(h.gw, h.mask) !== networkOf(h.ip, h.mask)).map((h) => ({
+      message: h.name + "'s default gateway " + h.gw + ' is outside its own subnet '
+               + networkLabel(h.ip, h.mask) + '.',
+      evidence: h.name + ' ' + h.ip + '/' + h.mask + ' -> gateway ' + h.gw
+    })) },
+
+  { code: 'APIPA_ADDRESS', sev: 'high',
+    detect: (text, hosts) => hosts.filter((h) => h.ip.indexOf('169.254.') === 0).map((h) => ({
+      message: h.name + ' holds a self-assigned address ' + h.ip + ', which means no DHCP server replied.',
+      evidence: h.name + ' ' + h.ip
+    })) },
+
+  { code: 'INTERFACE_DOWN', sev: 'high',
+    detect: (text) => (text || '').split('\n')
+      .filter((line) => /administratively down/i.test(line) || /\bdown\s+down\b/i.test(line))
+      .map((line) => ({
+        message: 'Interface ' + (line.trim().split(/\s+/)[0] || 'interface') + ' is down.',
+        evidence: line.trim()
+      })) },
+
+  { code: 'NO_DEFAULT_ROUTE', sev: 'medium',
+    detect: (text) => {
+      const low = (text || '').toLowerCase();
+      if (low.indexOf('show ip route') === -1 && low.indexOf('gateway of last resort') === -1) return [];
+      if (low.indexOf('gateway of last resort is not set') === -1) return [];
+      return [{
+        message: 'The router has no gateway of last resort configured.',
+        evidence: 'show ip route reports: gateway of last resort is not set'
+      }];
+    } },
+
+  { code: 'VLAN_SUBNET_MISMATCH', sev: 'medium',
+    detect: (text, hosts) => {
+      const byVlan = {};
+      hosts.filter((h) => h.vlan && isValidMask(h.mask)).forEach((h) => {
+        const key = h.vlan.toLowerCase().replace(/\s/g, '');
+        byVlan[key] = byVlan[key] || {};
+        byVlan[key][networkLabel(h.ip, h.mask)] = true;
+      });
+      return Object.keys(byVlan).filter((v) => Object.keys(byVlan[v]).length > 1).map((v) => ({
+        message: v + ' contains devices from more than one subnet, which usually means a port is in the wrong VLAN.',
+        evidence: v + ' subnets seen: ' + Object.keys(byVlan[v]).sort().join(', ')
+      }));
+    } },
+
+  { code: 'DNS_RESOLUTION_FAILURE', sev: 'medium',
+    detect: (text) => {
+      const low = (text || '').toLowerCase();
+      const nameFail = ['non-existent domain', 'nxdomain', "can't find", 'unknown host', 'dns request timed out']
+        .some((k) => low.indexOf(k) !== -1);
+      const ipOk = ['reply from', '0% loss', 'bytes=32 time'].some((k) => low.indexOf(k) !== -1);
+      if (!nameFail || !ipOk) return [];
+      return [{
+        message: 'Name resolution fails while direct IP connectivity succeeds. The fault is DNS, not routing.',
+        evidence: 'Lookup failure present alongside a successful IP ping.'
+      }];
+    } }
+];
+
+const EXAMPLE = {
+  symptom: 'PC1 in Lab 2 cannot open the file server. PC2, plugged into the next port on the same switch, works perfectly.',
+  topology: `PC1  192.168.10.25  255.255.255.0  192.168.20.1  vlan10
+PC2  192.168.10.26  255.255.255.0  192.168.10.1  vlan10
+FS1  192.168.30.10  255.255.255.0  192.168.30.1  vlan30`,
+  output: `PC1> ipconfig
+   IPv4 Address . . . . . . . . . . : 192.168.10.25
+   Subnet Mask  . . . . . . . . . . : 255.255.255.0
+   Default Gateway  . . . . . . . . : 192.168.20.1
+
+PC1> ping 192.168.10.26
+Reply from 192.168.10.26: bytes=32 time<1ms TTL=128
+
+PC1> ping 192.168.30.10
+Reply from 192.168.10.25: Destination host unreachable.
+
+PC2> ipconfig
+   IPv4 Address . . . . . . . . . . : 192.168.10.26
+   Subnet Mask  . . . . . . . . . . : 255.255.255.0
+   Default Gateway  . . . . . . . . : 192.168.10.1`
+};
+
+class Component extends DCLogic {
+  state = {
+    symptom: '', topology: '', showOutput: '',
+    findings: [], ran: false,
+    status: 'idle', dx: null, engine: null,
+    messages: [], draft: '', chatBusy: false,
+    editing: false, corrected: '', notes: '', decision: null,
+    log: [], copied: false,
+    caseRef: null, diagnosisId: null, saveError: null
+  };
+
+  componentDidMount() {
+    this.mouse = { x: 0, y: 0 };
+    this.onMove = (e) => {
+      this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      this.mouse.y = (e.clientY / window.innerHeight) * 2 - 1;
+      const el = e.target.closest && e.target.closest('[data-tilt]');
+      if (this.lastTilt && this.lastTilt !== el) {
+        this.lastTilt.style.setProperty('--rx', '0deg');
+        this.lastTilt.style.setProperty('--ry', '0deg');
+      }
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const amp = 4.5 * (this.props.tiltStrength ?? 1);
+        el.style.setProperty('--ry', (((e.clientX - r.left) / r.width - 0.5) * amp).toFixed(2) + 'deg');
+        el.style.setProperty('--rx', (-((e.clientY - r.top) / r.height - 0.5) * amp).toFixed(2) + 'deg');
+      }
+      this.lastTilt = el;
+    };
+    window.addEventListener('mousemove', this.onMove, { passive: true });
+    this.startField();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('mousemove', this.onMove);
+    window.removeEventListener('resize', this.onResize);
+    cancelAnimationFrame(this.raf);
+    if (this.renderer) this.renderer.dispose();
+  }
+
+  startField(tries) {
+    tries = tries || 0;
+    const canvas = document.getElementById('ns-field2');
+    if (!window.THREE || !canvas) {
+      if (tries < 80) setTimeout(() => this.startField(tries + 1), 100);
+      return;
+    }
+    const THREE = window.THREE;
+    const hue = this.props.accentHue ?? 200;
+    const n = this.props.particleCount ?? 1500;
+    const motion = this.props.motionIntensity ?? 1;
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x07090f, 0.06);
+    const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 200);
+    camera.position.set(0, 0, 16);
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight, false);
+    this.renderer = renderer;
+
+    const cA = new THREE.Color().setHSL(((hue - 60) % 360) / 360, 0.6, 0.6);
+    const cB = new THREE.Color().setHSL(((hue + 40) % 360) / 360, 0.55, 0.65);
+
+    const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), seed = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const r = 7 + Math.pow(Math.random(), 0.6) * 22;
+      const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+      pos[i * 3] = r * Math.sin(ph) * Math.cos(th);
+      pos[i * 3 + 1] = r * Math.cos(ph) * 0.6;
+      pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th) * 0.7;
+      const c = cA.clone().lerp(cB, Math.random());
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+      seed[i] = Math.random() * Math.PI * 2;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const points = new THREE.Points(geo, new THREE.PointsMaterial({
+      size: 0.075, vertexColors: true, transparent: true, opacity: 0.75,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    scene.add(points);
+
+    const shapes = new THREE.Group();
+    [[new THREE.IcosahedronGeometry(3.6, 1), cA, [-11, 2, -6], 0.5],
+     [new THREE.OctahedronGeometry(2.2, 0), cB, [12, -3, -5], 0.8],
+     [new THREE.TetrahedronGeometry(1.5, 0), cB, [9, 5, -9], 0.9]].forEach(([g, c, p, s], i) => {
+      const m = new THREE.LineSegments(new THREE.WireframeGeometry(g),
+        new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending }));
+      m.position.set(p[0], p[1], p[2]);
+      m.userData = { spin: s * 0.0015 * motion, phase: i * 1.7, base: p.slice(0) };
+      shapes.add(m);
+    });
+    scene.add(shapes);
+
+    const grid = new THREE.GridHelper(90, 44, cA.getHex(), 0x1a2130);
+    grid.position.y = -10;
+    grid.material.transparent = true;
+    grid.material.opacity = 0.1;
+    scene.add(grid);
+
+    this.onResize = () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight, false);
+    };
+    window.addEventListener('resize', this.onResize);
+
+    const base = pos.slice(0);
+    let sy = 0;
+    const tick = () => {
+      const t = performance.now() * 0.001;
+      sy += (window.scrollY - sy) * 0.06;
+      const a = geo.attributes.position.array;
+      for (let i = 0; i < n; i++) {
+        const s = seed[i];
+        a[i * 3 + 1] = base[i * 3 + 1] + Math.sin(t * 0.5 + s) * 0.3 * motion;
+        a[i * 3] = base[i * 3] + Math.cos(t * 0.33 + s) * 0.2 * motion;
+      }
+      geo.attributes.position.needsUpdate = true;
+      points.rotation.y = t * 0.016 * motion;
+      shapes.children.forEach((m) => {
+        m.rotation.x += m.userData.spin;
+        m.rotation.y += m.userData.spin * 1.4;
+        m.position.y = m.userData.base[1] + Math.sin(t * 0.5 + m.userData.phase) * 0.5 * motion;
+      });
+      camera.position.x += (this.mouse.x * 2.2 - camera.position.x) * 0.04;
+      camera.position.y += (-this.mouse.y * 1.4 - sy * 0.003 - camera.position.y) * 0.04;
+      camera.lookAt(0, -sy * 0.0018, 0);
+      renderer.render(scene, camera);
+      this.raf = requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
+  runRules(text) {
+    const hosts = parseHosts(text);
+    const out = [];
+    RULES.forEach((r) => {
+      (r.detect(text, hosts) || []).forEach((f) => {
+        out.push({
+          code: r.code, severity: r.sev,
+          message: f.message, evidence: f.evidence, color: SEV[r.sev]
+        });
+      });
+    });
+    return out;
+  }
+
+  async runDiagnosis() {
+    const { symptom, showOutput, topology } = this.state;
+    if (!symptom.trim() && !showOutput.trim()) return;
+    this.setState({
+      findings: [], ran: true, status: 'rules', dx: null, decision: null,
+      editing: false, corrected: '', notes: '',
+      caseRef: null, diagnosisId: null, saveError: null
+    });
+
+    // POST /api/triage runs app/rule_checker.py first, hands its findings to
+    // app/ai_assistant.py as established facts, and writes rows to cases,
+    // rule_findings and diagnoses. The in-page rule checker and heuristic
+    // below are only a fallback for when the server is unreachable, and the
+    // engine label reads 'offline' when that happens so the two are never
+    // mistaken for one another.
+    try {
+      const res = await fetch('/api/triage', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ symptom: symptom, topology: topology, show_output: showOutput })
+      });
+      if (!res.ok) throw new Error('triage returned ' + res.status);
+      const data = await res.json();
+      this.setState({ findings: data.findings || [], status: 'thinking' });
+      await new Promise((r) => setTimeout(r, 300));
+      this.setState({
+        dx: data.dx,
+        engine: (data.dx && data.dx.engine) || data.engine,
+        caseRef: data.case_ref,
+        diagnosisId: data.diagnosis_id,
+        status: 'ready'
+      });
+      return;
+    } catch (e) {
+      const findings = this.runRules(showOutput);
+      this.setState({ findings: findings, status: 'thinking' });
+      await new Promise((r) => setTimeout(r, 300));
+      this.setState({
+        dx: this.heuristic(findings, symptom),
+        engine: 'offline',
+        saveError: 'server unreachable - nothing was saved',
+        status: 'ready'
+      });
+    }
+  }
+
+  heuristic(findings, symptom) {
+    const top = findings.sort((a, b) => (a.severity === 'high' ? -1 : 1))[0];
+    if (!top) {
+      return {
+        root_cause: 'Not enough signal in the pasted output to name a root cause.',
+        fault_type: 'unknown', osi_layer: 'L2', confidence: 0.25,
+        evidence: 'No deterministic check fired and no API key is configured.',
+        next_command: 'show interfaces status | show logging last 50',
+        fix_steps: ['Collect interface counters and recent log lines from both ends.', 'Re-run the diagnosis with that output pasted in.']
+      };
+    }
+    const map = {
+      MTU_MISMATCH: ['protocol', 'L3', 'ip mtu 1500 on the smaller side, or raise the other end', 'show ip ospf interface'],
+      NATIVE_VLAN_MISMATCH: ['config', 'L2', 'set the same native VLAN on both trunk ends', 'show interfaces trunk'],
+      DUPLEX_MISMATCH: ['physical', 'L1', 'hard-set both ends to the same speed and duplex', 'show interfaces | include duplex'],
+      CRC_ERRORS: ['physical', 'L1', 'replace the patch lead or optic and clear counters', 'show interfaces counters errors'],
+      IFACE_ADMIN_DOWN: ['config', 'L1', 'no shutdown on the interface', 'show ip interface brief'],
+      OSPF_STUCK: ['protocol', 'L3', 'align MTU and authentication on the adjacency', 'show ip ospf neighbor'],
+      PORT_SECURITY: ['security', 'L2', 'clear the violation and adjust the allowed MAC count', 'show port-security interface'],
+      DHCP_POOL: ['capacity', 'L3', 'widen the scope or shorten the lease', 'show ip dhcp pool']
+    };
+    const [ft, layer, fix, cmd] = map[top.code] || ['unknown', 'L2', 'investigate further', 'show logging'];
+    return {
+      root_cause: top.message.replace(/\.$/, '') + (symptom ? ', consistent with the reported symptom.' : '.'),
+      fault_type: ft, osi_layer: layer, confidence: top.severity === 'high' ? 0.72 : 0.55,
+      evidence: top.evidence, next_command: cmd,
+      fix_steps: [fix, 'Clear counters and retest from the affected PC.', 'Record what you found in the reviewer notes.']
+    };
+  }
+
+  async sendChat() {
+    const q = this.state.draft.trim();
+    if (!q || this.state.chatBusy) return;
+    const msgs = this.state.messages.concat([{ role: 'user', text: q }]);
+    this.setState({ messages: msgs, draft: '', chatBusy: true });
+
+    // POST /api/chat wraps app/ai_assistant.chat(). With no ANTHROPIC_API_KEY
+    // the server says so plainly rather than inventing an answer.
+    let reply;
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          question: q,
+          symptom: this.state.symptom,
+          findings: this.state.findings,
+          dx: this.state.dx,
+          case_ref: this.state.caseRef,
+          history: this.state.messages.map((m) => ({ role: m.role || 'user', content: m.text }))
+        })
+      });
+      if (!res.ok) throw new Error('chat returned ' + res.status);
+      reply = (await res.json()).reply;
+    } catch (e) {
+      reply = 'The NetSage server is not reachable from this page, so I cannot answer follow-ups. Check the evidence against the device yourself before acting.';
+    }
+    this.setState({ messages: msgs.concat([{ role: 'assistant', text: String(reply).trim() }]), chatBusy: false });
+  }
+
+  async recordReview(decision, corrected, notes) {
+    // The only call that closes a case. Writes one row to reviews; the AI
+    // output in diagnoses is never overwritten, so 'what did the AI say' and
+    // 'what did the human decide' stay separately answerable.
+    if (!this.state.diagnosisId) {
+      this.setState({ saveError: 'not saved - this case never reached the database' });
+      return;
+    }
+    try {
+      const res = await fetch('/api/review', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          diagnosis_id: this.state.diagnosisId,
+          case_ref: this.state.caseRef,
+          decision: decision,
+          reviewer: 'j.engineer',
+          corrected_root_cause: corrected || '',
+          reviewer_notes: notes || this.state.notes || ''
+        })
+      });
+      if (!res.ok) throw new Error('review returned ' + res.status);
+      this.setState({ saveError: null });
+    } catch (e) {
+      this.setState({ saveError: 'could not save this decision to the database' });
+    }
+  }
+
+  logEntry(decision, color, text) {
+    const t = new Date().toTimeString().slice(0, 5);
+    this.setState((s) => ({ log: [{ time: t, decision, color, text }].concat(s.log), decision: decision.toLowerCase() }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const dx = s.dx || {};
+    const busy = s.status === 'rules' || s.status === 'thinking';
+    const done = s.status === 'ready' && !!s.dx;
+    const dim = 'oklch(0.5 0.015 265)';
+    const on = 'oklch(0.82 0.13 200)';
+    const steps = Array.isArray(dx.fix_steps) ? dx.fix_steps : [];
+
+    return {
+      reviewer: 'j.engineer',
+      engineLabel: s.engine || 'idle',
+      caseLabel: s.saveError ? s.saveError : (s.caseRef ? 'case ' + s.caseRef + ' saved' : 'no case open'),
+      caseColor: s.saveError ? 'oklch(0.7 0.16 25)' : (s.caseRef ? 'oklch(0.78 0.16 155)' : 'oklch(0.62 0.015 265)'),
+      symptom: s.symptom, topology: s.topology, showOutput: s.showOutput,
+      outputLines: s.showOutput ? s.showOutput.split('\n').length : 0,
+      setSymptom: (e) => this.setState({ symptom: e.target.value }),
+      setTopology: (e) => this.setState({ topology: e.target.value }),
+      setOutput: (e) => this.setState({ showOutput: e.target.value }),
+      loadExample: () => this.setState({ symptom: EXAMPLE.symptom, topology: EXAMPLE.topology, showOutput: EXAMPLE.output }),
+      resetCase: () => this.setState({ symptom: '', topology: '', showOutput: '', findings: [], ran: false, dx: null, status: 'idle', messages: [], decision: null, editing: false, notes: '', corrected: '', caseRef: null, diagnosisId: null, saveError: null }),
+      runDiagnosis: () => this.runDiagnosis(),
+      runLabel: busy ? 'Working…' : (done ? 'Run diagnosis again' : 'Run diagnosis'),
+
+      step1Color: s.symptom || s.showOutput ? on : dim,
+      step2Color: s.ran ? on : dim,
+      step3Color: done ? on : dim,
+      step4Color: s.decision ? on : dim,
+
+      findings: s.findings,
+      findingCount: s.findings.length,
+      hasFindings: s.findings.length > 0,
+      noFindings: s.findings.length === 0,
+      emptyFindingsNote: s.ran ? 'No deterministic check fired on this output. The AI proposal below rests on the symptom text alone — treat its confidence with more suspicion.' : 'Waiting for output to check.',
+
+      isIdle: !busy && !done,
+      isBusy: busy,
+      busyLabel: s.status === 'rules' ? 'running 8 deterministic checks…' : 'asking the model, with those findings as facts…',
+      hasDiagnosis: done,
+      proposalMeta: done ? 'engine: ' + s.engine : (busy ? 'stage ' + (s.status === 'rules' ? '02' : '03') : 'awaiting input'),
+      dxRootCause: dx.root_cause || '',
+      dxFaultType: dx.fault_type || 'unknown',
+      dxLayer: dx.osi_layer || '—',
+      dxConfidence: dx.confidence != null ? Number(dx.confidence).toFixed(2) : '—',
+      dxConfWidth: Math.round((Number(dx.confidence) || 0) * 100) + '%',
+      dxEvidence: dx.evidence || '',
+      dxCommand: dx.next_command || '',
+      dxFixSteps: steps.map((t, i) => ({ n: String(i + 1).padStart(2, '0'), text: t })),
+      copyLabel: s.copied ? 'copied' : 'copy',
+      copyCommand: () => {
+        if (navigator.clipboard) navigator.clipboard.writeText(dx.next_command || '');
+        this.setState({ copied: true });
+        setTimeout(() => this.setState({ copied: false }), 1400);
+      },
+
+      isEditing: s.editing,
+      corrected: s.corrected, notes: s.notes,
+      setCorrected: (e) => this.setState({ corrected: e.target.value }),
+      setNotes: (e) => this.setState({ notes: e.target.value }),
+      accept: () => {
+        this.logEntry('ACCEPTED', 'oklch(0.78 0.16 155)', dx.root_cause || '');
+        this.recordReview('accepted');
+      },
+      reject: () => {
+        this.logEntry('REJECTED', 'oklch(0.7 0.16 25)', 'Rejected: ' + (dx.root_cause || ''));
+        this.recordReview('rejected');
+      },
+      toggleEdit: () => this.setState((p) => ({ editing: !p.editing, corrected: p.corrected || dx.root_cause || '' })),
+      saveEdit: () => {
+        if (!this.state.corrected.trim()) return;
+        this.logEntry('EDITED', 'oklch(0.82 0.14 85)', this.state.corrected.trim());
+        this.recordReview('edited', this.state.corrected.trim());
+        this.setState({ editing: false });
+      },
+      acceptBorder: s.decision === 'accepted' ? 'oklch(0.78 0.16 155)' : 'oklch(0.78 0.16 155 / .45)',
+      acceptBg: s.decision === 'accepted' ? 'oklch(0.78 0.16 155 / .28)' : 'oklch(0.78 0.16 155 / .1)',
+      editBorder: s.editing || s.decision === 'edited' ? 'oklch(0.82 0.14 85)' : 'oklch(0.82 0.14 85 / .45)',
+      editBg: s.decision === 'edited' ? 'oklch(0.82 0.14 85 / .26)' : 'oklch(0.82 0.14 85 / .08)',
+      rejectBorder: s.decision === 'rejected' ? 'oklch(0.7 0.16 25)' : 'oklch(0.7 0.16 25 / .45)',
+      rejectBg: s.decision === 'rejected' ? 'oklch(0.7 0.16 25 / .26)' : 'oklch(0.7 0.16 25 / .08)',
+
+      messages: s.messages.map((m) => ({
+        text: m.text,
+        who: m.role === 'user' ? 'you' : 'netsage',
+        align: m.role === 'user' ? 'flex-end' : 'flex-start',
+        border: m.role === 'user' ? 'oklch(0.72 0.15 200 / .45)' : 'oklch(0.3 0.02 265)',
+        bg: m.role === 'user' ? 'oklch(0.72 0.15 200 / .1)' : 'oklch(0.13 0.02 265)'
+      })),
+      chatEmpty: s.messages.length === 0,
+      chatMeta: s.chatBusy ? 'thinking…' : (s.messages.length ? s.messages.length + ' turns' : 'grounded in this case'),
+      draft: s.draft,
+      setDraft: (e) => this.setState({ draft: e.target.value }),
+      onChatKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.sendChat(); } },
+      sendChat: () => this.sendChat(),
+
+      log: s.log,
+      hasLog: s.log.length > 0
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ case.case_ref }} &middot; NetSage AI{% endblock %}
+{% block n1 %}on{% endblock %}
+{% block body %}
+
+{% set slug = (diagnosis.osi_layer if diagnosis else '') | layer_slug %}
+
+<p class="eyebrow">Case {{ case.case_ref }} &middot; severity {{ case.severity }}</p>
+<h1>{{ case.symptom }}</h1>
+<p class="sub"><a href="{{ url_for('index') }}">&larr; Back to the queue</a></p>
+
+<!-- ---------------- evidence ---------------- -->
+<div class="panel">
+  <h2>Evidence collected</h2>
+  {% if case.topology_notes %}
+    <p class="eyebrow">Topology notes</p>
+    <pre class="term">{{ case.topology_notes }}</pre>
+  {% endif %}
+  {% if case.show_output %}
+    <p class="eyebrow" style="margin-top:16px">Command output</p>
+    <pre class="term">{{ case.show_output }}</pre>
+  {% endif %}
+</div>
+
+<!-- ---------------- rule checker ---------------- -->
+<div class="panel rules">
+  <h2>Deterministic checks</h2>
+  <p class="sub" style="margin-bottom:14px">
+    Plain Python, no model involved. These are mechanical facts about the
+    configuration, so they cannot be hallucinated.
+  </p>
+  {% if findings %}
+    <ul class="findings">
+    {% for f in findings %}
+      <li>
+        <span class="sev {{ f.severity }}">{{ f.severity }}</span>
+        &nbsp;<code>{{ f.rule_code }}</code>
+        <div>{{ f.message }}</div>
+        {% if f.evidence %}<div style="color:var(--ink-faint);font-size:13px">{{ f.evidence }}</div>{% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">No rule triggered on this case. That does not mean the
+    configuration is correct, only that none of the mechanical checks apply.</p>
+  {% endif %}
+</div>
+
+<!-- ---------------- AI proposal ---------------- -->
+{% if diagnosis %}
+<div class="panel ai">
+  <h2>AI proposal <span style="font-weight:400;color:var(--ink-faint);font-size:13px">
+    &middot; engine: {{ diagnosis.engine }}</span></h2>
+
+  <dl class="facts">
+    <dt>Root cause</dt><dd>{{ diagnosis.root_cause }}</dd>
+    <dt>Fault type</dt><dd>{{ diagnosis.fault_type }}</dd>
+    <dt>OSI layer</dt>
+    <dd><span class="badge {{ slug }}">{{ diagnosis.osi_layer or 'unknown' }}</span></dd>
+    <dt>Confidence</dt>
+    <dd>
+      <div class="conf">
+        <div class="track">
+          <div class="fill {% if diagnosis.confidence < low_threshold %}low{% endif %}"
+               style="width: {{ (diagnosis.confidence * 100) | round(0, 'floor') }}%"></div>
+        </div>
+        <b>{{ (diagnosis.confidence * 100) | round(0, 'floor') | int }}%</b>
+      </div>
+    </dd>
+    <dt>Evidence used</dt><dd>{{ diagnosis.evidence or '—' }}</dd>
+    <dt>Next command</dt>
+    <dd><code style="font-family:var(--mono)">{{ diagnosis.next_command or '—' }}</code></dd>
+    <dt>Suggested fix</dt><dd>{{ diagnosis.fix_steps or '—' }}</dd>
+  </dl>
+</div>
+{% else %}
+<div class="panel"><p class="empty">No diagnosis has been produced for this case yet.</p></div>
+{% endif %}
+
+<!-- ---------------- human gate ---------------- -->
+{% if diagnosis %}
+<div class="panel gate">
+  <h2>Human decision</h2>
+  <p class="sub" style="margin-bottom:4px">
+    {% if review %}
+      Reviewed as <strong>{{ review.decision }}</strong>{% if review.reviewer %}
+      by {{ review.reviewer }}{% endif %}. Submitting again replaces it.
+    {% else %}
+      This proposal has not been reviewed. It is not a confirmed fault yet.
+    {% endif %}
+  </p>
+
+  <form method="post" action="{{ url_for('submit_review', case_ref=case.case_ref) }}">
+    <label>Decision</label>
+    <div class="choices">
+      {% for d in decisions %}
+      <label>
+        <input type="radio" name="decision" value="{{ d }}"
+               {% if review and review.decision == d %}checked{% elif not review and loop.first %}checked{% endif %}>
+        <span>{{ d | capitalize }}</span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <label for="reviewer">Reviewer</label>
+    <input type="text" id="reviewer" name="reviewer" placeholder="Your name"
+           value="{{ review.reviewer if review else '' }}">
+
+    <label for="corrected">Corrected root cause <span style="text-transform:none;letter-spacing:0">(fill in if you edited or rejected)</span></label>
+    <textarea id="corrected" name="corrected_root_cause"
+              placeholder="What was actually wrong">{{ review.corrected_root_cause if review else '' }}</textarea>
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="reviewer_notes"
+              placeholder="Why the proposal was wrong, or what evidence confirmed it">{{ review.reviewer_notes if review else '' }}</textarea>
+
+    <button type="submit">Save decision</button>
+  </form>
+</div>
+{% endif %}
+
+<!-- ---------------- ground truth ---------------- -->
+{% if case.actual_root_cause %}
+<div class="panel">
+  <h2>Recorded outcome</h2>
+  <dl class="facts">
+    <dt>What it was</dt><dd>{{ case.actual_root_cause }}</dd>
+    <dt>Fault type</dt><dd>{{ case.actual_fault_type }}</dd>
+    <dt>OSI layer</dt><dd>{{ case.actual_osi_layer }}</dd>
+  </dl>
+</div>
+{% endif %}
+
+{% endblock %}

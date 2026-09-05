@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Queue &middot; NetSage AI{% endblock %}
+{% block n1 %}on{% endblock %}
+{% block body %}
+
+<h1>Review queue</h1>
+<p class="sub">Every case below has an AI proposal waiting on a human decision.
+Nothing here counts as a confirmed fault until someone reviews it.</p>
+
+{% if not ai_enabled %}
+<div class="notice">
+  No API key is set, so diagnoses were produced by the local heuristic engine.
+  Set <code>ANTHROPIC_API_KEY</code> and re-run the pipeline to use the model.
+</div>
+{% endif %}
+
+<div class="tally">
+  <div><b>{{ counts.pending }}</b><small>Pending</small></div>
+  <div><b>{{ counts.accepted }}</b><small>Accepted</small></div>
+  <div><b>{{ counts.edited }}</b><small>Edited</small></div>
+  <div><b>{{ counts.rejected }}</b><small>Rejected</small></div>
+</div>
+
+<div class="list">
+{% for r in rows %}
+  {% set slug = (r.diagnosis.osi_layer if r.diagnosis else '') | layer_slug %}
+  <a class="row {{ slug }}" href="{{ url_for('case_detail', case_ref=r.case.case_ref) }}">
+    <span class="ref">{{ r.case.case_ref }}</span>
+    <span class="sym">{{ r.case.symptom }}</span>
+    <span>
+      {% if r.diagnosis %}
+        <span class="badge {{ slug }}">{{ r.diagnosis.osi_layer or 'unknown' }}</span>
+      {% endif %}
+    </span>
+    <span class="state {{ r.state }}">
+      {{ r.state }}{% if r.low_confidence and r.state == 'pending' %} &middot; low conf{% endif %}
+    </span>
+  </a>
+{% else %}
+  <div class="row"><span class="empty">No cases loaded yet. Run the pipeline first.</span></div>
+{% endfor %}
+</div>
+
+{% endblock %}

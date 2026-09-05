@@ -1,0 +1,302 @@
+[
+  {
+    "case_ref": "NS-001",
+    "symptom": "PC1 received an IP address but cannot reach the file server FS1 on another VLAN. Ping to its own default gateway succeeds.",
+    "topology_notes": "PC1 192.168.10.25 255.255.255.0 192.168.10.1 vlan10\nFS1 192.168.30.10 255.255.255.0 192.168.30.1 vlan30",
+    "show_output": "R1# show ip route\nGateway of last resort is not set\nC 192.168.10.0/24 is directly connected, GigabitEthernet0/0.10\nC 192.168.20.0/24 is directly connected, GigabitEthernet0/0.20\n\nPC1> ping 192.168.30.10\nReply from 192.168.10.1: Destination host unreachable.",
+    "actual_root_cause": "No sub-interface or route exists for VLAN 30 on R1, so inter-VLAN routing to 192.168.30.0/24 is missing.",
+    "actual_fault_type": "ROUTING",
+    "actual_osi_layer": "Layer 3",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-002",
+    "symptom": "A new employee's PC shows limited connectivity and an address starting 169.254.",
+    "topology_notes": "PC7 169.254.11.98 255.255.0.0 vlan20",
+    "show_output": "PC7> ipconfig\nIPv4 Address. . . : 169.254.11.98\nSubnet Mask . . . : 255.255.0.0\nDefault Gateway . : \n\nSW1# show vlan brief\n20   STAFF    active    Fa0/3, Fa0/4",
+    "actual_root_cause": "The DHCP relay (ip helper-address) is missing on the VLAN 20 sub-interface, so no DHCP offer reached the host.",
+    "actual_fault_type": "DHCP",
+    "actual_osi_layer": "Layer 3",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-003",
+    "symptom": "Users report the intranet portal is down, but it works when they type the IP address directly.",
+    "topology_notes": "PC3 10.1.1.40 255.255.255.0 10.1.1.1 vlan10",
+    "show_output": "PC3> ping 10.1.5.20\nReply from 10.1.5.20: bytes=32 time=1ms TTL=127\n0% loss\n\nPC3> nslookup portal.corp.local\nServer: 10.1.9.9\n*** portal.corp.local: Non-existent domain",
+    "actual_root_cause": "The DNS server address handed out by DHCP points at a decommissioned server, so name lookups fail while IP connectivity is fine.",
+    "actual_fault_type": "DNS",
+    "actual_osi_layer": "Layer 7",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-004",
+    "symptom": "Two desks in accounts intermittently lose network access; both work fine when the other is unplugged.",
+    "topology_notes": "PC11 172.16.4.50 255.255.255.0 172.16.4.1 vlan40\nPC12 172.16.4.50 255.255.255.0 172.16.4.1 vlan40",
+    "show_output": "SW2# show ip arp\nInternet 172.16.4.50  0  00E0.1234.AAAA ARPA\nInternet 172.16.4.50  0  00E0.5678.BBBB ARPA",
+    "actual_root_cause": "Two hosts were statically configured with the same IP address 172.16.4.50.",
+    "actual_fault_type": "OTHER",
+    "actual_osi_layer": "Layer 3",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-005",
+    "symptom": "Guest Wi-Fi users can reach the internal HR file share, which should not be possible.",
+    "topology_notes": "GuestAP 10.20.0.5 255.255.255.0 10.20.0.1 vlan99\nHRSRV 10.10.5.20 255.255.255.0 10.10.5.1 vlan50",
+    "show_output": "R1# show access-lists\nExtended IP access list GUEST-OUT\n    10 permit ip any any",
+    "actual_root_cause": "The guest ACL permits all traffic instead of denying access to internal subnets before the permit line.",
+    "actual_fault_type": "ACL",
+    "actual_osi_layer": "Layer 4",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-006",
+    "symptom": "A branch office PC can reach other machines in the branch but nothing at head office.",
+    "topology_notes": "PCB1 192.168.50.15 255.255.255.0 192.168.50.1 vlan50",
+    "show_output": "RB# show ip route\nGateway of last resort is not set\nC 192.168.50.0/24 is directly connected, GigabitEthernet0/1",
+    "actual_root_cause": "The branch router has no default route or WAN route toward head office.",
+    "actual_fault_type": "ROUTING",
+    "actual_osi_layer": "Layer 3",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-007",
+    "symptom": "A newly cabled desk gets no link light and no IP address at all.",
+    "topology_notes": "PC15 assigned to vlan10",
+    "show_output": "SW1# show ip interface brief\nFastEthernet0/9  unassigned  YES unset  administratively down  down",
+    "actual_root_cause": "The switch port was left administratively shut down after maintenance.",
+    "actual_fault_type": "PHYSICAL",
+    "actual_osi_layer": "Layer 1",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-008",
+    "symptom": "A vendor cannot reach the newly published web server from outside the office.",
+    "topology_notes": "WEB1 192.168.70.20 255.255.255.0 192.168.70.1 vlan70",
+    "show_output": "R1# show ip nat translations\n(no entries)\nR1# show run | include ip nat\n ip nat inside source list 1 interface GigabitEthernet0/2 overload",
+    "actual_root_cause": "No static NAT entry exists mapping the public address to the internal web server address.",
+    "actual_fault_type": "NAT",
+    "actual_osi_layer": "Layer 3",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-009",
+    "symptom": "After a desk move a PC gets an IP in the wrong range and cannot reach its department server.",
+    "topology_notes": "PC21 192.168.10.60 255.255.255.0 192.168.10.1 vlan10\nPC22 192.168.30.61 255.255.255.0 192.168.30.1 vlan10",
+    "show_output": "SW1# show vlan brief\n10   SALES     active   Fa0/6, Fa0/7\n30   FINANCE   active   Fa0/12",
+    "actual_root_cause": "The relocated port was left in VLAN 10 instead of being moved to VLAN 30.",
+    "actual_fault_type": "VLAN",
+    "actual_osi_layer": "Layer 2",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-010",
+    "symptom": "A laptop brought back from home cannot reach anything on the office network.",
+    "topology_notes": "LT4 192.168.10.44 255.255.255.0 192.168.1.1 vlan10",
+    "show_output": "LT4> ipconfig\nIPv4 Address. . . : 192.168.10.44\nSubnet Mask . . . : 255.255.255.0\nDefault Gateway . : 192.168.1.1\n\nLT4> ping 192.168.10.1\nRequest timed out.",
+    "actual_root_cause": "The laptop still carries the home default gateway 192.168.1.1, which is outside its office subnet.",
+    "actual_fault_type": "ROUTING",
+    "actual_osi_layer": "Layer 3",
+    "severity": "low"
+  },
+  {
+    "case_ref": "NS-011",
+    "symptom": "Half of a relocated team got IP addresses, the other half did not.",
+    "topology_notes": "PC30 169.254.7.4 255.255.0.0 vlan60",
+    "show_output": "R1# show ip dhcp pool\nPool VLAN60 :\n Total addresses : 30\n Leased addresses : 30\n Available addresses : 0",
+    "actual_root_cause": "The DHCP scope for VLAN 60 was exhausted; every address in the pool was already leased.",
+    "actual_fault_type": "DHCP",
+    "actual_osi_layer": "Layer 3",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-012",
+    "symptom": "Devices on VLAN 20 can ping each other but cannot reach any other VLAN.",
+    "topology_notes": "PC33 10.2.20.15 255.255.255.0 10.2.20.1 vlan20",
+    "show_output": "SW1# show interfaces trunk\nPort  Vlans allowed on trunk\nGi0/1 1,10,30,40",
+    "actual_root_cause": "VLAN 20 is not in the allowed VLAN list on the uplink trunk to the router.",
+    "actual_fault_type": "VLAN",
+    "actual_osi_layer": "Layer 2",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-013",
+    "symptom": "A workstation cannot reach anything outside its own subnet after a manual IP change.",
+    "topology_notes": "PC34 10.5.2.30 255.255.0.255 10.5.2.1 vlan25",
+    "show_output": "PC34> ipconfig\nIPv4 Address. . . : 10.5.2.30\nSubnet Mask . . . : 255.255.0.255",
+    "actual_root_cause": "The subnet mask 255.255.0.255 is not a valid contiguous mask.",
+    "actual_fault_type": "OTHER",
+    "actual_osi_layer": "Layer 3",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-014",
+    "symptom": "Printing to the network printer fails from one department only.",
+    "topology_notes": "PRN1 10.3.9.50 255.255.255.0 10.3.9.1 vlan90",
+    "show_output": "R1# show access-lists\nExtended IP access list DEPT-B\n    10 deny tcp 10.3.4.0 0.0.0.255 host 10.3.9.50 eq 9100\n    20 permit ip any any",
+    "actual_root_cause": "An ACL explicitly denies the printing port 9100 from the 10.3.4.0/24 department subnet.",
+    "actual_fault_type": "ACL",
+    "actual_osi_layer": "Layer 4",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-015",
+    "symptom": "A server was re-addressed and now nobody can reach it by name.",
+    "topology_notes": "APP1 10.8.1.25 255.255.255.0 10.8.1.1 vlan80",
+    "show_output": "PC40> ping 10.8.1.25\nReply from 10.8.1.25: bytes=32 time=2ms TTL=128\n0% loss\nPC40> nslookup app1.corp.local\n*** Can't find app1.corp.local: Non-existent domain",
+    "actual_root_cause": "The DNS A record for app1 still points at the old address and was never updated.",
+    "actual_fault_type": "DNS",
+    "actual_osi_layer": "Layer 7",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-016",
+    "symptom": "Internet browsing fails for all users while internal resources work normally.",
+    "topology_notes": "PC44 172.20.1.30 255.255.255.0 172.20.1.1 vlan10",
+    "show_output": "R1# show ip route\nGateway of last resort is not set\nC 172.20.1.0/24 is directly connected, GigabitEthernet0/0\nC 172.20.2.0/24 is directly connected, GigabitEthernet0/1",
+    "actual_root_cause": "The default route toward the ISP was removed, leaving no gateway of last resort.",
+    "actual_fault_type": "ROUTING",
+    "actual_osi_layer": "Layer 3",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-017",
+    "symptom": "Two hosts that should be in the same VLAN are on different subnets and cannot see each other.",
+    "topology_notes": "PC50 10.4.1.10 255.255.255.0 10.4.1.1 vlan70\nPC51 10.4.9.10 255.255.255.0 10.4.9.1 vlan70",
+    "show_output": "SW3# show vlan brief\n70   OPS   active   Fa0/2, Fa0/8",
+    "actual_root_cause": "One host was given an address from a different subnet than the rest of VLAN 70.",
+    "actual_fault_type": "VLAN",
+    "actual_osi_layer": "Layer 2",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-018",
+    "symptom": "VoIP handsets never come online after a switch replacement.",
+    "topology_notes": "PHONE1 assigned to voice vlan 150",
+    "show_output": "SW4# show run interface Fa0/5\n switchport mode access\n switchport access vlan 10",
+    "actual_root_cause": "The voice VLAN was not configured on the access ports after the switch swap.",
+    "actual_fault_type": "VLAN",
+    "actual_osi_layer": "Layer 2",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-019",
+    "symptom": "One PC can browse the web but cannot reach the internal ERP server.",
+    "topology_notes": "PC55 10.6.3.22 255.255.255.0 10.6.3.1 vlan30\nERP 10.6.8.40 255.255.255.0 10.6.8.1 vlan80",
+    "show_output": "R1# show access-lists\nExtended IP access list ERP-PROT\n    10 permit tcp 10.6.5.0 0.0.0.255 host 10.6.8.40 eq 1521\n    20 deny ip any host 10.6.8.40",
+    "actual_root_cause": "The ERP ACL only permits the 10.6.5.0/24 subnet; the user's subnet 10.6.3.0/24 is denied.",
+    "actual_fault_type": "ACL",
+    "actual_osi_layer": "Layer 4",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-020",
+    "symptom": "Outbound internet works but a remote support tool cannot connect back in.",
+    "topology_notes": "SUP1 192.168.90.30 255.255.255.0 192.168.90.1 vlan90",
+    "show_output": "R1# show ip nat translations\nPro Inside global      Inside local\nudp 203.0.113.5:5060  192.168.90.31:5060",
+    "actual_root_cause": "The static NAT entry maps the public address to 192.168.90.31 instead of the support host 192.168.90.30.",
+    "actual_fault_type": "NAT",
+    "actual_osi_layer": "Layer 3",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-021",
+    "symptom": "Wireless clients get addresses but wired clients on the same switch do not.",
+    "topology_notes": "PC60 169.254.3.19 255.255.0.0 vlan10",
+    "show_output": "R1# show run interface Gi0/0.10\n encapsulation dot1Q 10\n ip address 10.9.10.1 255.255.255.0\n(no ip helper-address configured)",
+    "actual_root_cause": "The ip helper-address is missing on the wired VLAN 10 sub-interface, so DHCP requests are not relayed.",
+    "actual_fault_type": "DHCP",
+    "actual_osi_layer": "Layer 3",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-022",
+    "symptom": "A link between two switches came up but no traffic passes between buildings.",
+    "topology_notes": "SW5 to SW6 uplink",
+    "show_output": "SW5# show interfaces trunk\nPort  Mode   Native vlan\nGi0/2 on     1\nSW6# show interfaces trunk\nPort  Mode   Native vlan\nGi0/2 on     99",
+    "actual_root_cause": "The native VLAN does not match on the two ends of the trunk.",
+    "actual_fault_type": "VLAN",
+    "actual_osi_layer": "Layer 2",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-023",
+    "symptom": "Users report the network is slow and one uplink shows constant errors.",
+    "topology_notes": "SW7 uplink Gi0/1",
+    "show_output": "SW7# show interfaces Gi0/1\nGigabitEthernet0/1 is up, line protocol is up\n  1423 input errors, 1102 CRC, 0 frame",
+    "actual_root_cause": "A failing cable or transceiver on the uplink is producing CRC errors.",
+    "actual_fault_type": "PHYSICAL",
+    "actual_osi_layer": "Layer 1",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-024",
+    "symptom": "A test machine cannot reach the internet, though its neighbour on the same desk can.",
+    "topology_notes": "PC66 10.7.1.80 255.255.255.0 10.7.2.1 vlan10",
+    "show_output": "PC66> ipconfig\nIPv4 Address. . . : 10.7.1.80\nSubnet Mask . . . : 255.255.255.0\nDefault Gateway . : 10.7.2.1",
+    "actual_root_cause": "The default gateway 10.7.2.1 is outside the host's own 10.7.1.0/24 subnet.",
+    "actual_fault_type": "ROUTING",
+    "actual_osi_layer": "Layer 3",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-025",
+    "symptom": "After a firewall change, file transfers to the backup server hang partway through.",
+    "topology_notes": "BKP 10.11.2.30 255.255.255.0 10.11.2.1 vlan20",
+    "show_output": "R1# show access-lists\nExtended IP access list BACKUP\n    10 permit tcp any host 10.11.2.30 eq 22\n    20 deny ip any any",
+    "actual_root_cause": "The ACL permits only SSH to the backup host; the backup transfer port is denied by the implicit-style deny at line 20.",
+    "actual_fault_type": "ACL",
+    "actual_osi_layer": "Layer 4",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-026",
+    "symptom": "New subnet was added but its hosts cannot reach any other subnet.",
+    "topology_notes": "PC70 10.12.6.20 255.255.255.0 10.12.6.1 vlan60",
+    "show_output": "R1# show ip route\nC 10.12.1.0/24 is directly connected, Gi0/0.10\nC 10.12.2.0/24 is directly connected, Gi0/0.20\n(no entry for 10.12.6.0/24)",
+    "actual_root_cause": "No sub-interface was created on the router for the new VLAN 60 subnet.",
+    "actual_fault_type": "ROUTING",
+    "actual_osi_layer": "Layer 3",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-027",
+    "symptom": "Some websites load and others do not, with no obvious pattern.",
+    "topology_notes": "PC72 10.13.1.15 255.255.255.0 10.13.1.1 vlan10",
+    "show_output": "PC72> nslookup example.com\nDNS request timed out.\nPC72> ping 10.13.9.9\nRequest timed out.",
+    "actual_root_cause": "The primary DNS server is unreachable, so lookups only succeed when a cached or secondary entry answers.",
+    "actual_fault_type": "DNS",
+    "actual_osi_layer": "Layer 7",
+    "severity": "medium"
+  },
+  {
+    "case_ref": "NS-028",
+    "symptom": "A camera system on its own VLAN lost connectivity to the recorder after a config change.",
+    "topology_notes": "CAM1 10.14.7.40 255.255.255.0 10.14.7.1 vlan70\nNVR 10.14.7.10 255.255.255.0 10.14.7.1 vlan70",
+    "show_output": "SW8# show ip interface brief\nFastEthernet0/14  unassigned  YES unset  down  down",
+    "actual_root_cause": "The switch port serving the camera VLAN uplink is down.",
+    "actual_fault_type": "PHYSICAL",
+    "actual_osi_layer": "Layer 1",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-029",
+    "symptom": "Two departments were merged and now several machines report address conflicts.",
+    "topology_notes": "PC80 10.15.1.100 255.255.255.0 10.15.1.1 vlan10\nPC81 10.15.1.100 255.255.255.0 10.15.1.1 vlan10",
+    "show_output": "SW9# show ip arp\nInternet 10.15.1.100  0  00E0.AAAA.1111 ARPA\nInternet 10.15.1.100  0  00E0.BBBB.2222 ARPA",
+    "actual_root_cause": "Overlapping static address assignments from the two merged departments produced duplicate IPs.",
+    "actual_fault_type": "OTHER",
+    "actual_osi_layer": "Layer 3",
+    "severity": "high"
+  },
+  {
+    "case_ref": "NS-030",
+    "symptom": "An external partner can reach the web server but not the API server behind the same public address.",
+    "topology_notes": "API1 192.168.80.60 255.255.255.0 192.168.80.1 vlan80",
+    "show_output": "R1# show ip nat translations\nPro Inside global       Inside local\ntcp 203.0.113.9:80     192.168.80.50:80\n(no entry for port 8443)",
+    "actual_root_cause": "Only the web port is statically translated; no NAT entry exists for the API port to reach 192.168.80.60.",
+    "actual_fault_type": "NAT",
+    "actual_osi_layer": "Layer 3",
+    "severity": "medium"
+  }
+]

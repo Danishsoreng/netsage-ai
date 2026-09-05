@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+
+# IDE / editors
+.idea/
+.vscode/
+
+# Local data (regenerate from schema.sql + data/cases/seed_cases.json)
+data/netsage.db
+*.sqlite
+*.sqlite3
+
+# Node
+node_modules/
+
+# Archives / build output
+*.zip
+
+# Airflow
+airflow/logs/
+airflow/*.cfg
+airflow/*.db
+
+# OS
+Thumbs.db
+.DS_Store

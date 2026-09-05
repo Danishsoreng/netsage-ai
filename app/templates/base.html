@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}NetSage AI{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap">
+    <a class="brand" href="{{ url_for('console') }}">NetSage AI <span>/ review console</span></a>
+    <nav class="nav">
+      <a href="{{ url_for('console') }}">Console</a>
+      <a href="{{ url_for('index') }}" class="{% block n1 %}{% endblock %}">Queue</a>
+      <a href="{{ url_for('dashboard') }}" class="{% block n2 %}{% endblock %}">Dashboard</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+{% block body %}{% endblock %}
+</main>
+</body>
+</html>

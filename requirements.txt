@@ -1,0 +1,15 @@
+# Core application
+Flask>=3.0
+SQLAlchemy>=2.0
+
+# The Claude API. Brings pydantic with it, which the diagnosis schema uses.
+# Without an ANTHROPIC_API_KEY the app never calls it and runs on the local
+# heuristic engine instead, so this stays installed but idle.
+anthropic>=1.2
+
+# PostgreSQL driver. Not needed if you run the SQLite fallback.
+psycopg2-binary>=2.9
+
+# Orchestration. Install separately if you are only running the CLI pipeline;
+# Airflow pulls in a large dependency tree.
+# apache-airflow>=2.9
