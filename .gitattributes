@@ -1,0 +1,3 @@
+# Language detection configuration 
+*.html linguist-language=Python 
+netsage-ui/* linguist-documentation 
